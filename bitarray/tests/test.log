@@ -1,0 +1,27 @@
+[==========] Running 8 tests from 2 test cases.
+[----------] Global test environment set-up.
+[----------] 7 tests from bitarrayGoodAlloc
+[ RUN      ] bitarrayGoodAlloc.Constructors
+[       OK ] bitarrayGoodAlloc.Constructors (0 ms)
+[ RUN      ] bitarrayGoodAlloc.Assignments
+[       OK ] bitarrayGoodAlloc.Assignments (0 ms)
+[ RUN      ] bitarrayGoodAlloc.PushBack
+[       OK ] bitarrayGoodAlloc.PushBack (0 ms)
+[ RUN      ] bitarrayGoodAlloc.BadRanges
+[       OK ] bitarrayGoodAlloc.BadRanges (0 ms)
+[ RUN      ] bitarrayGoodAlloc.Resize
+[       OK ] bitarrayGoodAlloc.Resize (0 ms)
+[ RUN      ] bitarrayGoodAlloc.iterators
+[       OK ] bitarrayGoodAlloc.iterators (0 ms)
+[ RUN      ] bitarrayGoodAlloc.const_iterators
+[       OK ] bitarrayGoodAlloc.const_iterators (0 ms)
+[----------] 7 tests from bitarrayGoodAlloc (0 ms total)
+
+[----------] 1 test from bitarrayBadAlloc
+[ RUN      ] bitarrayBadAlloc.constructors
+[       OK ] bitarrayBadAlloc.constructors (0 ms)
+[----------] 1 test from bitarrayBadAlloc (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 8 tests from 2 test cases ran. (0 ms total)
+[  PASSED  ] 8 tests.

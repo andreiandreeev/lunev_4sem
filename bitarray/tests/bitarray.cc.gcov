@@ -1,0 +1,309 @@
+        -:    0:Source:../source/bitarray.cc
+        -:    0:Graph:bitarray.gcno
+        -:    0:Data:bitarray.gcda
+        -:    0:Runs:2
+        -:    0:Programs:1
+        -:    1:#include "bitarray.hpp"
+        -:    2:
+       20:    3:void bitarray::swap(bitarray &lhs, bitarray &rhs) {
+       20:    4:    std::swap(lhs.arr_, rhs.arr_);
+       20:    5:    std::swap(lhs.size_, rhs.size_);
+       20:    6:    std::swap(lhs.chrsize_, rhs.chrsize_);
+       20:    7:    std::swap(lhs.capacity_, rhs.capacity_);
+       20:    8:}
+        -:    9:
+       44:   10:bitarray::bitarray(int size, bool filling)
+        -:   11:        :
+       82:   12:        arr_((size == 0) ?
+       42:   13:             nullptr : new u_char[(static_cast<int>(size / 8) + 1)]{}),
+        -:   14:        size_(size),
+       78:   15:        chrsize_((size == 0) ?
+       38:   16:                 0 : static_cast<int>(size / 8) + 1),
+       78:   17:        capacity_((size == 0) ?
+      158:   18:                  0 : static_cast<int>(size / 8) + 1)
+        -:   19:{
+       40:   20:    if(filling)
+      114:   21:        for(int i = 0; i < capacity_; ++i)
+      102:   22:            arr_[i] = 0xFF;
+       40:   23:}
+        -:   24:
+      104:   25:bitarray::~bitarray() noexcept {
+       52:   26:    delete [] arr_;
+       52:   27:}
+        -:   28:
+       14:   29:bitarray::bitarray(const bitarray &other)
+        -:   30:        :
+       14:   31:        bitarray(other.size_)
+        -:   32:{
+      102:   33:    for(int i = 0; i < std::min(capacity_, other.capacity_); ++i)
+       90:   34:        arr_[i] = other.arr_[i];
+        -:   35:
+       12:   36:    size_       = other.size_;
+       12:   37:    chrsize_    = other.chrsize_;
+       12:   38:}
+        -:   39:
+        2:   40:bitarray::bitarray(bitarray &&other) noexcept {
+        2:   41:    arr_        = other.arr_;
+        2:   42:    size_       = other.size_;
+        2:   43:    capacity_   = other.capacity_;
+        -:   44:
+        2:   45:    other.arr_ = nullptr;
+        2:   46:}
+        -:   47:
+        7:   48:bitarray &bitarray::operator=(const bitarray &other) {
+        7:   49:    if(this != &other) {
+       13:   50:        bitarray tmp(other);
+        6:   51:        swap(*this, tmp);
+        -:   52:    }
+        6:   53:    return *this;
+        -:   54:}
+        -:   55:
+        2:   56:bitarray &bitarray::operator=(bitarray &&other) noexcept {
+        2:   57:    swap(*this, other);
+        2:   58:    return *this;
+        -:   59:}
+        -:   60:
+      210:   61:void bitarray::push_back(bool expr) {
+        -:   62:
+      210:   63:    if(size_ == capacity_* 8) {
+        8:   64:        if(size_ == 0) {
+        8:   65:            bitarray tmp(16);
+        -:   66:
+        4:   67:            tmp.resize(0);
+        4:   68:            tmp.push_back(expr);
+        -:   69:
+        4:   70:            swap(*this, tmp);
+        4:   71:            return;
+        -:   72:        }
+        -:   73:
+        8:   74:        bitarray tmp(capacity_ * 2 * 8);
+       24:   75:        for(int i = 0; i < capacity_; ++i)
+       20:   76:            tmp.arr_[i] = arr_[i];
+        -:   77:
+        4:   78:        tmp.size_       = size_;
+        4:   79:        tmp.chrsize_    = chrsize_;
+        4:   80:        tmp.push_back(expr);
+        -:   81:
+        4:   82:        swap(*this, tmp);
+        4:   83:        return;
+        -:   84:    } else {
+      202:   85:        ++size_;
+      202:   86:        if (static_cast<float>(size_) / 8 > static_cast<float>(chrsize_))
+       28:   87:            ++chrsize_;
+        -:   88:    }
+        -:   89:
+      202:   90:    uint32_t bitplace = 0;
+        -:   91:
+      202:   92:    if (size_ > 8)
+      184:   93:        bitplace = size_ - 8 * (chrsize_ - 1);
+        -:   94:    else
+       18:   95:        bitplace = size_;
+        -:   96:
+      202:   97:    u_char mask = static_cast<u_char>(expr) << (8 - bitplace);
+        -:   98:
+      202:   99:    if(expr)
+       68:  100:        arr_[chrsize_ - 1] = arr_[chrsize_ - 1] | mask;
+        -:  101:    else
+      134:  102:        arr_[chrsize_ - 1] = arr_[chrsize_ - 1] & (~mask);
+        -:  103:}
+        -:  104:
+      216:  105:bool bitarray::operator[](int pos) const {
+      216:  106:    if(pos < 0)
+        2:  107:        throw std::out_of_range("index can't be negative");
+        -:  108:
+      214:  109:    uint32_t bitplace = static_cast<uint32_t>(pos % 8);
+      214:  110:    u_char mask = arr_[static_cast<int>(pos / 8)] << bitplace;
+        -:  111:
+      214:  112:    mask = mask >> 7U;
+      214:  113:    return mask != 0;
+        -:  114:}
+        -:  115:
+     1860:  116:bitarray::proxy bitarray::operator[] (int pos) {
+     1860:  117:    if(pos < 0)
+        2:  118:        throw std::out_of_range("index can't be negative");
+        -:  119:
+     1858:  120:    return {arr_[static_cast<int>(pos / 8)],
+     1858:  121:            static_cast<uint32_t>(pos % 8)};
+        -:  122:}
+        -:  123:
+       15:  124:void bitarray::resize(int size) {
+       15:  125:    if(size < 0)
+        2:  126:        throw std::runtime_error("bad size");
+        -:  127:
+       13:  128:    if(size > capacity_ * 8) {
+        9:  129:        bitarray tmp(size);
+       36:  130:        for(int i = 0; i < capacity_; ++i)
+       32:  131:            tmp.arr_[i] = arr_[i];
+        4:  132:        swap(*this, tmp);
+        4:  133:        return;
+        -:  134:    }
+        -:  135:
+        8:  136:    chrsize_    = (size == 0) ? 0 : static_cast<int>(size / 8) + 1;
+        8:  137:    size_       = size;
+        -:  138:}
+        -:  139:
+       10:  140:bitarray::iterator bitarray::at(int pos) {
+       10:  141:    if(pos >= size_)
+        2:  142:        throw std::out_of_range("index greater than size");
+        8:  143:    return {*this, pos};
+        -:  144:}
+        -:  145:
+        6:  146:bitarray::const_iterator bitarray::at(int pos) const {
+        6:  147:    if(pos >= size_)
+        2:  148:        throw std::out_of_range("index greater than size");
+        4:  149:    return {*this, pos};
+        -:  150:}
+        -:  151:
+      896:  152:int bitarray::size() const noexcept { return size_; }
+        -:  153:
+       16:  154:bitarray::iterator bitarray::begin() { return {*this, 0}; }
+        -:  155:
+       12:  156:bitarray::iterator bitarray::end() { return {*this, size_}; }
+        -:  157:
+        8:  158:bitarray::const_iterator bitarray::begin() const { return {*this, 0}; }
+        -:  159:
+        4:  160:bitarray::const_iterator bitarray::end() const { return {*this, size_}; }
+        -:  161:
+     1858:  162:bitarray::proxy::proxy(u_char &element, uint32_t bitplace)
+        -:  163:        :
+        -:  164:        element_(element),
+     1858:  165:        bitplace_(bitplace)
+     1858:  166:{}
+        -:  167:
+     1854:  168:bitarray::proxy::operator bool() const {
+     1854:  169:    u_char mask = element_ << bitplace_;
+     1854:  170:    mask = mask >> 7U;
+     1854:  171:    return mask != 0;
+        -:  172:}
+        -:  173:
+      284:  174:bitarray::proxy &bitarray::proxy::operator=(bool expr) {
+      284:  175:    u_char mask = static_cast<u_char>(true) << (7 - bitplace_);
+        -:  176:
+      284:  177:    if(expr)
+      140:  178:        element_ = element_ | mask;
+        -:  179:    else
+      144:  180:        element_ = element_ & (~mask);
+        -:  181:
+        -:  182:
+      284:  183:    return *this;
+        -:  184:}
+        -:  185:
+       36:  186:bitarray::iterator::iterator(bitarray &bitarr, int cur_pos)
+        -:  187:        :
+        -:  188:        bitarr_(bitarr),
+       36:  189:        cur_pos_(cur_pos)
+       36:  190:{}
+        -:  191:
+      556:  192:bitarray::iterator &bitarray::iterator::operator++() {
+      556:  193:    ++cur_pos_;
+      556:  194:    return *this;
+        -:  195:}
+        -:  196:
+        2:  197:bitarray::iterator bitarray::iterator::operator++(int) {
+        2:  198:    iterator tmp = *this;
+        2:  199:    ++(*this);
+        2:  200:    return tmp;
+        -:  201:}
+        -:  202:
+        2:  203:bitarray::iterator &bitarray::iterator::operator--() {
+        2:  204:    --cur_pos_;
+        2:  205:    return *this;
+        -:  206:}
+        -:  207:
+        2:  208:bitarray::iterator bitarray::iterator::operator--(int) {
+        2:  209:    iterator tmp = *this;
+        2:  210:    --(*this);
+        2:  211:    return tmp;
+        -:  212:}
+        -:  213:
+        4:  214:bitarray::iterator &bitarray::iterator::operator+=(int shift) {
+        4:  215:    cur_pos_ += shift;
+        4:  216:    return *this;
+        -:  217:}
+        -:  218:
+        4:  219:bitarray::iterator &bitarray::iterator::operator-=(int shift) {
+        4:  220:    cur_pos_ -= shift;
+        4:  221:    return *this;
+        -:  222:}
+        -:  223:
+      570:  224:bitarray::proxy bitarray::iterator::operator*() { return bitarr_[cur_pos_]; }
+        -:  225:
+      570:  226:bool bitarray::iterator::operator==(const bitarray::iterator &rhs) {
+      570:  227:    return (&bitarr_ == &rhs.bitarr_) && (cur_pos_ == rhs.cur_pos_);
+        -:  228:}
+        -:  229:
+      562:  230:bool bitarray::iterator::operator!=(const bitarray::iterator &rhs) { return !(*this == rhs); }
+        -:  231:
+       16:  232:bitarray::const_iterator::const_iterator(const bitarray &bitarr, int cur_pos)
+        -:  233:        :
+        -:  234:        bitarr_(bitarr),
+       16:  235:        cur_pos_(cur_pos)
+       16:  236:{}
+        -:  237:
+        2:  238:bitarray::const_iterator &bitarray::const_iterator::operator++() {
+        2:  239:    ++cur_pos_;
+        2:  240:    return *this;
+        -:  241:}
+        -:  242:
+        2:  243:bitarray::const_iterator bitarray::const_iterator::operator++(int) {
+        2:  244:    const_iterator tmp = *this;
+        2:  245:    ++(*this);
+        2:  246:    return tmp;
+        -:  247:}
+        -:  248:
+        2:  249:bitarray::const_iterator &bitarray::const_iterator::operator--() {
+        2:  250:    --cur_pos_;
+        2:  251:    return *this;
+        -:  252:}
+        -:  253:
+        2:  254:bitarray::const_iterator bitarray::const_iterator::operator--(int) {
+        2:  255:    const_iterator tmp = *this;
+        2:  256:    --(*this);
+        2:  257:    return tmp;
+        -:  258:}
+        -:  259:
+        4:  260:bitarray::const_iterator &bitarray::const_iterator::operator+=(int shift) {
+        4:  261:    cur_pos_ += shift;
+        4:  262:    return *this;
+        -:  263:}
+        -:  264:
+        4:  265:bitarray::const_iterator &bitarray::const_iterator::operator-=(int shift) {
+        4:  266:    cur_pos_ -= shift;
+        4:  267:    return *this;
+        -:  268:}
+        -:  269:
+       10:  270:bool bitarray::const_iterator::operator==(const bitarray::const_iterator &rhs) {
+       10:  271:    return (&bitarr_ == &rhs.bitarr_) && (cur_pos_ == rhs.cur_pos_);
+        -:  272:}
+        -:  273:
+        2:  274:bool bitarray::const_iterator::operator!=(const bitarray::const_iterator &rhs) { return !(*this == rhs); }
+        -:  275:
+       12:  276:bool bitarray::const_iterator::operator*() { return bitarr_[cur_pos_]; }
+        -:  277:
+        2:  278:bitarray::iterator operator+(int shift, const bitarray::iterator &rhs) {
+        2:  279:    auto tmp = rhs;
+        2:  280:    return tmp += shift;
+        -:  281:}
+        -:  282:
+        2:  283:bitarray::iterator operator+(const bitarray::iterator &lhs, int shift) {
+        2:  284:    return shift + lhs;
+        -:  285:}
+        -:  286:
+        2:  287:bitarray::iterator operator-(const bitarray::iterator &lhs, int shift) {
+        2:  288:    auto tmp = lhs;
+        2:  289:    return tmp -= shift;
+        -:  290:}
+        -:  291:
+        2:  292:bitarray::const_iterator operator+(int shift, const bitarray::const_iterator &rhs) {
+        2:  293:    auto tmp = rhs;
+        2:  294:    return tmp += shift;
+        -:  295:}
+        -:  296:
+        2:  297:bitarray::const_iterator operator+(const bitarray::const_iterator &lhs, int shift) {
+        2:  298:    return shift + lhs;
+        -:  299:}
+        -:  300:
+        2:  301:bitarray::const_iterator operator-(const bitarray::const_iterator &lhs, int shift) {
+        2:  302:    auto tmp = lhs;
+        2:  303:    return tmp -= shift;
+        -:  304:}
