@@ -116,14 +116,10 @@ bitarray::iterator operator+ (int shift, const bitarray::iterator& rhs);
 
 bitarray::iterator operator+ (const bitarray::iterator& rhs, int shift);
 
-bitarray::iterator operator- (int shift, const bitarray::iterator& rhs);
-
 bitarray::iterator operator- (const bitarray::iterator& rhs, int shift);
 
 bitarray::const_iterator operator+ (int shift, const bitarray::const_iterator& rhs);
 
 bitarray::const_iterator operator+ (const bitarray::const_iterator& rhs, int shift);
-
-bitarray::const_iterator operator- (int shift, const bitarray::const_iterator& rhs);
 
 bitarray::const_iterator operator- (const bitarray::const_iterator& rhs, int shift);
