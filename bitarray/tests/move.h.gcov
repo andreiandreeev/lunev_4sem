@@ -49,8 +49,8 @@
         -:   44:   */
         -:   45:  template<typename _Tp>
         -:   46:    inline _GLIBCXX_CONSTEXPR _Tp*
-        -:   47:    __addressof(_Tp& __r) _GLIBCXX_NOEXCEPT
-        -:   48:    { return __builtin_addressof(__r); }
+        6:   47:    __addressof(_Tp& __r) _GLIBCXX_NOEXCEPT
+        6:   48:    { return __builtin_addressof(__r); }
         -:   49:
         -:   50:_GLIBCXX_END_NAMESPACE_VERSION
         -:   51:} // namespace
@@ -75,8 +75,8 @@
         -:   70:   */
         -:   71:  template<typename _Tp>
         -:   72:    constexpr _Tp&&
-        -:   73:    forward(typename std::remove_reference<_Tp>::type& __t) noexcept
-        -:   74:    { return static_cast<_Tp&&>(__t); }
+       20:   73:    forward(typename std::remove_reference<_Tp>::type& __t) noexcept
+       20:   74:    { return static_cast<_Tp&&>(__t); }
         -:   75:
         -:   76:  /**
         -:   77:   *  @brief  Forward an rvalue.
@@ -100,8 +100,8 @@
         -:   95:  */
         -:   96:  template<typename _Tp>
         -:   97:    constexpr typename std::remove_reference<_Tp>::type&&
-      260:   98:    move(_Tp&& __t) noexcept
-      260:   99:    { return static_cast<typename std::remove_reference<_Tp>::type&&>(__t); }
+      494:   98:    move(_Tp&& __t) noexcept
+      494:   99:    { return static_cast<typename std::remove_reference<_Tp>::type&&>(__t); }
         -:  100:
         -:  101:
         -:  102:  template<typename _Tp>
@@ -189,7 +189,7 @@
         -:  184:    typename enable_if<__and_<__not_<__is_tuple_like<_Tp>>,
         -:  185:			      is_move_constructible<_Tp>,
         -:  186:			      is_move_assignable<_Tp>>::value>::type
-       80:  187:    swap(_Tp& __a, _Tp& __b)
+      144:  187:    swap(_Tp& __a, _Tp& __b)
         -:  188:    noexcept(__and_<is_nothrow_move_constructible<_Tp>,
         -:  189:	            is_nothrow_move_assignable<_Tp>>::value)
         -:  190:#else
@@ -200,10 +200,10 @@
         -:  195:      // concept requirements
         -:  196:      __glibcxx_function_requires(_SGIAssignableConcept<_Tp>)
         -:  197:
-       80:  198:      _Tp __tmp = _GLIBCXX_MOVE(__a);
-       80:  199:      __a = _GLIBCXX_MOVE(__b);
-       80:  200:      __b = _GLIBCXX_MOVE(__tmp);
-       80:  201:    }
+      144:  198:      _Tp __tmp = _GLIBCXX_MOVE(__a);
+      144:  199:      __a = _GLIBCXX_MOVE(__b);
+      144:  200:      __b = _GLIBCXX_MOVE(__tmp);
+      144:  201:    }
         -:  202:
         -:  203:  // _GLIBCXX_RESOLVE_LIB_DEFECTS
         -:  204:  // DR 809. std::swap should be overloaded for array types.

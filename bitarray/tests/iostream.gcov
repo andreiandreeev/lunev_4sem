@@ -1,7 +1,7 @@
         -:    0:Source:/usr/include/c++/7/iostream
         -:    0:Graph:bitarray.gcno
         -:    0:Data:bitarray.gcda
-        -:    0:Runs:8
+        -:    0:Runs:2
         -:    0:Programs:1
         -:    1:// Standard iostream objects -*- C++ -*-
         -:    2:
@@ -76,7 +76,7 @@
         -:   71:  //@}
         -:   72:
         -:   73:  // For construction of filebuffers for cout, cin, cerr, clog et. al.
-        8:   74:  static ios_base::Init __ioinit;
+        2:   74:  static ios_base::Init __ioinit;
         -:   75:
         -:   76:_GLIBCXX_END_NAMESPACE_VERSION
         -:   77:} // namespace

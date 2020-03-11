@@ -197,14 +197,14 @@
         -:  192:  template<typename _Tp>
         -:  193:    _GLIBCXX14_CONSTEXPR
         -:  194:    inline const _Tp&
-      102:  195:    min(const _Tp& __a, const _Tp& __b)
+       30:  195:    min(const _Tp& __a, const _Tp& __b)
         -:  196:    {
         -:  197:      // concept requirements
         -:  198:      __glibcxx_function_requires(_LessThanComparableConcept<_Tp>)
         -:  199:      //return __b < __a ? __b : __a;
-      102:  200:      if (__b < __a)
+       30:  200:      if (__b < __a)
     #####:  201:	return __b;
-      102:  202:      return __a;
+       30:  202:      return __a;
         -:  203:    }
         -:  204:
         -:  205:  /**

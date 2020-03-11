@@ -3,6 +3,8 @@
 
 TEST(bitarrayGoodAlloc, Constructors) {
 
+    ASSERT_THROW(bitarray bad_vec(-1), std::out_of_range);
+
     bitarray v(100, true);
     ASSERT_EQ(v.size(), 100);
 
@@ -187,6 +189,23 @@ TEST(bitarrayGoodAlloc, const_iterators) {
 
     ASSERT_TRUE((v.begin() + v.size()) == v.end());
     ASSERT_TRUE((v.end() - v.size()) == v.begin());
+}
+
+TEST(bitarrayGoodAlloc, find) {
+    bitarray elems(100, true);
+
+    for(int i = 0; i < elems.size(); i += 3)
+        elems[i] = false;
+
+    ASSERT_EQ(bitarray::find_bit(0, 64, 0x6db6db6db6db6db6, false), 0);
+
+    ASSERT_EQ(elems.find(0, elems.size(), false), 0);
+    ASSERT_EQ(elems.find(3, elems.size(), false), 3);
+    ASSERT_EQ(elems.find(99, elems.size(), true), -1);
+    ASSERT_EQ(elems.find(0, 3, false), 0);
+    ASSERT_EQ(elems.find(0, 3, true), 1);
+
+    ASSERT_THROW(elems.find(-1, 3, false), std::out_of_range);
 }
 
 // BAD ALLOC TESTS

@@ -1,4 +1,7 @@
 #include "bitarray.hpp"
+#include <algorithm>
+#include <functional>
+#include <iostream>
 
 void bitarray::swap(bitarray &lhs, bitarray &rhs) {
     std::swap(lhs.arr_, rhs.arr_);
@@ -9,17 +12,23 @@ void bitarray::swap(bitarray &lhs, bitarray &rhs) {
 
 bitarray::bitarray(int size, bool filling)
         :
-        arr_((size == 0) ?
-             nullptr : new u_char[(static_cast<int>(size / 8) + 1)]{}),
+        arr_(nullptr),
         size_(size),
-        chrsize_((size == 0) ?
-                 0 : static_cast<int>(size / 8) + 1),
-        capacity_((size == 0) ?
-                  0 : static_cast<int>(size / 8) + 1)
+        chrsize_(0),
+        capacity_(0)
 {
+    if(size != 0) {
+        if(size < 0)
+            throw std::out_of_range("bad size in ctor");
+
+        arr_        = new uint64_t[(static_cast<int>((size + 63)/ 64))]{};
+        chrsize_    = static_cast<int>(size / 64) + 1;
+        capacity_   = static_cast<int>(size / 64) + 1;
+    }
+
     if(filling)
         for(int i = 0; i < capacity_; ++i)
-            arr_[i] = 0xFF;
+            arr_[i] = 0xFFFFFFFFFFFFFFFF;
 }
 
 bitarray::~bitarray() noexcept {
@@ -60,7 +69,7 @@ bitarray &bitarray::operator=(bitarray &&other) noexcept {
 
 void bitarray::push_back(bool expr) {
 
-    if(size_ == capacity_* 8) {
+    if(size_ == capacity_* 64) {
         if(size_ == 0) {
             bitarray tmp(16);
 
@@ -71,7 +80,7 @@ void bitarray::push_back(bool expr) {
             return;
         }
 
-        bitarray tmp(capacity_ * 2 * 8);
+        bitarray tmp(capacity_ * 2 * 64);
         for(int i = 0; i < capacity_; ++i)
             tmp.arr_[i] = arr_[i];
 
@@ -83,18 +92,18 @@ void bitarray::push_back(bool expr) {
         return;
     } else {
         ++size_;
-        if (static_cast<float>(size_) / 8 > static_cast<float>(chrsize_))
+        if (static_cast<float>(size_) / 64 > static_cast<float>(chrsize_))
             ++chrsize_;
     }
 
     uint32_t bitplace = 0;
 
-    if (size_ > 8)
-        bitplace = size_ - 8 * (chrsize_ - 1);
+    if (size_ > 64)
+        bitplace = size_ - 64 * (chrsize_ - 1);
     else
         bitplace = size_;
 
-    u_char mask = static_cast<u_char>(expr) << (8 - bitplace);
+    uint64_t mask = static_cast<uint64_t>(expr) << (64 - bitplace);
 
     if(expr)
         arr_[chrsize_ - 1] = arr_[chrsize_ - 1] | mask;
@@ -106,10 +115,10 @@ bool bitarray::operator[](int pos) const {
     if(pos < 0)
         throw std::out_of_range("index can't be negative");
 
-    uint32_t bitplace = static_cast<uint32_t>(pos % 8);
-    u_char mask = arr_[static_cast<int>(pos / 8)] << bitplace;
+    uint32_t bitplace = static_cast<uint32_t>(pos % 64);
+    uint64_t mask = arr_[static_cast<int>(pos / 64)] << bitplace;
 
-    mask = mask >> 7U;
+    mask = mask >> 63U;
     return mask != 0;
 }
 
@@ -117,15 +126,15 @@ bitarray::proxy bitarray::operator[] (int pos) {
     if(pos < 0)
         throw std::out_of_range("index can't be negative");
 
-    return {arr_[static_cast<int>(pos / 8)],
-            static_cast<uint32_t>(pos % 8)};
+    return {arr_[static_cast<int>(pos / 64)],
+            static_cast<uint32_t>(pos % 64)};
 }
 
 void bitarray::resize(int size) {
     if(size < 0)
         throw std::runtime_error("bad size");
 
-    if(size > capacity_ * 8) {
+    if(size > capacity_ * 64) {
         bitarray tmp(size);
         for(int i = 0; i < capacity_; ++i)
             tmp.arr_[i] = arr_[i];
@@ -133,8 +142,12 @@ void bitarray::resize(int size) {
         return;
     }
 
-    chrsize_    = (size == 0) ? 0 : static_cast<int>(size / 8) + 1;
-    size_       = size;
+    if (size_ == 0)
+        chrsize_ = 0;
+    else
+        chrsize_ = static_cast<int>(size / 64) + 1;
+
+    size_ = size;
 }
 
 bitarray::iterator bitarray::at(int pos) {
@@ -159,20 +172,84 @@ bitarray::const_iterator bitarray::begin() const { return {*this, 0}; }
 
 bitarray::const_iterator bitarray::end() const { return {*this, size_}; }
 
-bitarray::proxy::proxy(u_char &element, uint32_t bitplace)
+int bitarray::find_bit(int first_bit, int last_bit, uint64_t var, bool elem) {
+    if(elem) {
+        for(int i = first_bit; i < last_bit; i++)
+            if (var & (0x8000000000000000 >> i))
+                return i;
+    } else {
+        for(int i = first_bit; i < last_bit; ++i)
+            if ((var & (0x8000000000000000 >> i)) == 0)
+                return i;
+    }
+
+    return -1;
+}
+
+int bitarray::find(int first, int last, bool elem) const {
+    if ((first >= size_ || first < 0) || (last > size_ || last < 0) || last < first)
+        throw std::out_of_range("out of range");
+    int nemo = 0;
+
+    // all intervals [first, last)
+
+    uint64_t* first_ptr  = arr_ + first / 64;
+    uint64_t* last_ptr   = arr_ + last / 64 + static_cast<int>(last % 64 != 0);
+
+    int first_bit = first % 64;
+    int last_bit  = last % 64;
+
+    if(first_bit != 0) {
+        if(first_ptr != last_ptr - 1)
+            last_bit = 64;
+        if ((nemo = find_bit(first_bit, last_bit, *first_ptr, elem)) != -1)
+            return static_cast<int>(first_ptr - arr_) * 64 + nemo;
+        else
+            ++first_ptr;
+    }
+
+    std::function<bool(uint64_t)> predicat;
+
+    if(elem)
+        predicat = [](uint64_t elem) -> bool {return elem != 0;};
+    else
+        predicat = [](uint64_t elem) -> bool {return elem != UINT64_MAX;};
+
+    auto nemo_bay = std::find_if(first_ptr, last_ptr, predicat);
+
+    if(nemo_bay == last_ptr)
+        return -1;
+
+    if(nemo_bay != last_ptr - 1)
+        last_bit = 64;
+    else
+        last_bit = last % 64;
+
+    if(nemo_bay != first_ptr)
+        first_bit = 0;
+
+    nemo = find_bit(first_bit, last_bit, *nemo_bay, elem);
+
+    if (nemo == -1)
+        return -1;
+    else
+        return static_cast<int>(first_ptr - arr_) * 64 + nemo;
+}
+
+bitarray::proxy::proxy(uint64_t &element, uint32_t bitplace)
         :
         element_(element),
         bitplace_(bitplace)
 {}
 
 bitarray::proxy::operator bool() const {
-    u_char mask = element_ << bitplace_;
-    mask = mask >> 7U;
+    uint64_t mask = element_ << bitplace_;
+    mask = mask >> 63U;
     return mask != 0;
 }
 
 bitarray::proxy &bitarray::proxy::operator=(bool expr) {
-    u_char mask = static_cast<u_char>(true) << (7 - bitplace_);
+    uint64_t mask = static_cast<uint64_t>(true) << (63 - bitplace_);
 
     if(expr)
         element_ = element_ | mask;

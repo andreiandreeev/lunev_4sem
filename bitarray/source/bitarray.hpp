@@ -4,7 +4,7 @@
 #include <stdexcept>
 
 class bitarray final {
-    u_char* arr_                = nullptr;
+    uint64_t* arr_                = nullptr;
 
     int size_                   = 0;
     int chrsize_                = 0;
@@ -13,10 +13,10 @@ class bitarray final {
 public:
 
     class proxy final {
-        u_char& element_;
+        uint64_t& element_;
         uint32_t bitplace_;
     public:
-        proxy(u_char& element, uint32_t bitplace);
+        proxy(uint64_t& element, uint32_t bitplace);
 
         operator bool() const;
 
@@ -110,6 +110,11 @@ public:
     const_iterator end() const;
 
     const_iterator at(int pos) const;
+
+// finding elem in [first, last) range
+    int find(int first, int last, bool elem) const;
+
+    static int find_bit(int first_bit, int last_bit, uint64_t var, bool elem);
 };
 
 bitarray::iterator operator+ (int shift, const bitarray::iterator& rhs);
