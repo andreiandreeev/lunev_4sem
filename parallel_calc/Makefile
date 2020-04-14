@@ -1,7 +1,7 @@
-CXX = g++
-CXXFLAGS = -std=c++17 -pthread
+CC = gcc
+CFLAGS = -std=c99 -pthread -O3
 
 all: calculus
 
-calculus :
-	$(CXX) $(CXXFLAGS) main.cc -o calculus
+calculus: calculus.c
+
