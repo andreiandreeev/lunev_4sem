@@ -12,7 +12,6 @@
 
 #define ASSERT_TRUE(expr)   do {                                                                    \
                                 if (!(expr)) {                                                      \
-                                    perror("");                                                     \
                                     fprintf(stderr, "in %s err: %s", __PRETTY_FUNCTION__, #expr);   \
                                     exit(EXIT_FAILURE);                                             \
                                 }                                                                   \
@@ -59,7 +58,6 @@ int main(int argc, char** argv) {
         return EXIT_FAILURE;
     }
 
-    threads_num = min(get_nprocs(), threads_num);
     if (threads_num < get_nprocs()/2)
         spin_threads_num = get_nprocs()/2 - threads_num;
 
