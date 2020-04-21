@@ -72,7 +72,6 @@ int main(int argc, char** argv) {
     ASSERT_TRUE(pthread_attr_init(&pthread_attr) == 0);
 
     for (int i = 0; i < threads_num; ++i) {
-
         CPU_ZERO(&cpu_set);
         CPU_SET(i, &cpu_set);
 
@@ -84,8 +83,6 @@ int main(int argc, char** argv) {
     }
 
     for (int i = threads_num; i < cpu_number; ++i) {
-        ASSERT_TRUE(pthread_attr_init(&pthread_attr) == 0 );
-
         CPU_ZERO(&cpu_set);
         CPU_SET(i, &cpu_set);
 
