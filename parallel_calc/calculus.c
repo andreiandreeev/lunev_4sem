@@ -9,164 +9,154 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <limits.h>
+#include <math.h>
 
 #define ASSERT_TRUE(expr)   do {                                                                    \
                                 if (!(expr)) {                                                      \
-                                    fprintf(stderr, "in %s err: %s", __PRETTY_FUNCTION__, #expr);   \
+                                    fprintf(stderr, "in %s err: %s\n", __PRETTY_FUNCTION__, #expr); \
+                                    perror("");                                                     \
                                     exit(EXIT_FAILURE);                                             \
                                 }                                                                   \
-                            } while (0);
+                            } while (0);    
+#define L 0
+#define R 40160                            
+#define STEP 0.0001
 
-#define min(x, y) ((x) < (y) ? (x) : (y))
-#define sqr(x) ((x) * (x))
+#define FUNC(x) cos(x)                            
+#define max(x, y) ((x)>(y) ? (x) : (y))
 
-
-typedef struct dot_t {
-    int first, second;
-} dot_t;
-
+#if defined(DEBUG)
+    #define PRINTF(...) printf(__VA_ARGS__)
+#else
+    #define PRINTF(...)             
+#endif               
 
 typedef struct routine_arg_t {
-    const dot_t* all_dots;
-    int dots_num;
-    //range of points among which the search is conducted
-    // [first, last)
-    int first, last;
-    long min_distance;
+    double left_border, right_border;
+    double answ;
 } routine_arg_t;
 
 typedef struct routine_t {
     pthread_t pthread;
     routine_arg_t arg;
-}routine_t;
+} routine_t;
 
-long distance_sqr(dot_t, dot_t);
 void* SpinRoutine(void*);
-void* BruteForceSearchRoutine(void*);
+void* IntegrateRoutine(void*);
+void InitRoutineArgs(routine_t*, int);
 int get_number(const char*);
 
 int main(int argc, char** argv) {
     if (argc != 2) {
-        fprintf(stderr, "bad args number");
+        fprintf(stderr, "bad args number\n");
         fprintf(stderr, "usage: %s <threads number>", argv[0]);
         return EXIT_FAILURE;
     }
 
-    int threads_num = get_number(argv[1]), spin_threads_num = 0;
-    if ((threads_num <= 0)) {
+    int threads_num = get_number(argv[1]);
+    if (threads_num <= 0) {
         fprintf(stderr, "usage: %s <threads number>", argv[0]);
         return EXIT_FAILURE;
     }
 
-    if (threads_num < get_nprocs()/2)
-        spin_threads_num = get_nprocs()/2 - threads_num;
+    int cpu_number = get_nprocs();
 
-    int dots_number = 0;
-    scanf("%d", &dots_number);
-    assert(dots_number >= 0);
-
-    dot_t* dots = (dot_t*) calloc(dots_number, sizeof(dot_t));
-    assert(dots);
-
-    for (int i = 0; i < dots_number; ++i) {
-        scanf("%d", &dots[i].first);
-        scanf("%d", &dots[i].second);
-    }
-
-    routine_t* routines = (routine_t*) calloc(threads_num + spin_threads_num, sizeof(routine_t));
+    routine_t* routines = (routine_t*) calloc(max(threads_num, cpu_number), sizeof(routine_t));
     assert(routines);
 
-    int first = 0, last = dots_number/threads_num;
-    for (int i = 0; i < threads_num; ++i) {
-        routines[i].arg.all_dots = dots;
-        routines[i].arg.min_distance = LONG_MAX;
-        routines[i].arg.first = first;
-        routines[i].arg.last = last;
-        routines[i].arg.dots_num = dots_number;
-        first = last;
-        last += dots_number/threads_num;
-        //printf("thread: first %d and last %d\n",routines[i].arg.first, routines[i].arg.last );
-    }
+    InitRoutineArgs(routines, threads_num);
 
     pthread_attr_t pthread_attr;
     cpu_set_t cpu_set;
 
+    ASSERT_TRUE(pthread_attr_init(&pthread_attr) == 0);
+
     for (int i = 0; i < threads_num; ++i) {
+
+        CPU_ZERO(&cpu_set);
+        CPU_SET(i, &cpu_set);
+
+        ASSERT_TRUE(pthread_attr_setaffinity_np(&pthread_attr,
+            sizeof(cpu_set_t), &cpu_set) == 0);
+
+        ASSERT_TRUE(pthread_create(&routines[i].pthread, (i>=cpu_number) ? NULL : &pthread_attr,
+            IntegrateRoutine, (void*)&routines[i].arg) == 0);    
+    }
+
+    for (int i = threads_num; i < cpu_number; ++i) {
         ASSERT_TRUE(pthread_attr_init(&pthread_attr) == 0 );
 
         CPU_ZERO(&cpu_set);
         CPU_SET(i, &cpu_set);
 
-        ASSERT_TRUE(pthread_attr_setaffinity_np(&pthread_attr, sizeof(cpu_set_t), &cpu_set) == 0);
+        ASSERT_TRUE(pthread_attr_setaffinity_np(&pthread_attr,
+            sizeof(cpu_set_t), &cpu_set) == 0);
+
         ASSERT_TRUE(pthread_create(&routines[i].pthread, &pthread_attr,
-                BruteForceSearchRoutine, (void*)&routines[i].arg) == 0);
-        ASSERT_TRUE(pthread_attr_destroy(&pthread_attr) == 0);
+            SpinRoutine, NULL) == 0);    
     }
 
-    for (int i = threads_num; i < spin_threads_num + threads_num; ++i) {
-        ASSERT_TRUE(pthread_attr_init(&pthread_attr) == 0 );
+    ASSERT_TRUE(pthread_attr_destroy(&pthread_attr) == 0);
 
-        CPU_ZERO(&cpu_set);
-        CPU_SET(i, &cpu_set);
-        ASSERT_TRUE(pthread_attr_setaffinity_np(&pthread_attr, sizeof(cpu_set_t), &cpu_set) == 0);
-        ASSERT_TRUE(pthread_create(&routines[i].pthread, &pthread_attr,
-                                   SpinRoutine, NULL) == 0);
-        ASSERT_TRUE(pthread_attr_destroy(&pthread_attr) == 0);
-    }
-
-    for (int i = 0; i < threads_num; ++i) {
-        //printf("joining thread %d\n", i);
+    for (int i = 0; i < threads_num; ++i) 
         ASSERT_TRUE(pthread_join(routines[i].pthread, NULL) == 0);
-    }
 
-    //printf("JOINED");
-
-    long answ = routines->arg.min_distance;
+    double answ = 0;
     for (int i = 0; i < threads_num; ++i)
-        answ = min(answ, routines[i].arg.min_distance);
+        answ += routines[i].arg.answ;
 
-    printf("%ld", answ);
+    printf("cos(x) integral at [%d, %d] %lf\n", L, R, answ);
 
     free(routines);
-    free(dots);
 
     return 0;
 }
 
-void *SpinRoutine(void* arg) {
-    //printf("spin routine");
+void* IntegrateRoutine(void* arg) {
+    assert(arg);
+    register double cur = ((routine_arg_t*) arg) -> left_border;
+    register double right_border = ((routine_arg_t*) arg) -> right_border;
+    register double answ = 0;
+
+    #ifdef DEBUG
+        int i = 0;
+    #endif
+
+    while(cur < right_border) {
+        #ifdef DEBUG 
+        ++i;
+        #endif
+        answ += FUNC((cur + (cur + STEP)) / 2) * STEP;
+        cur += STEP;
+    }    
+
+    ((routine_arg_t*) arg) -> answ = answ;
+
+    PRINTF("in [%lf, %lf] %d iterations\n integral %lf\n", ((routine_arg_t*) arg) -> left_border, right_border, i, answ);
+    return NULL;
+}
+
+void *SpinRoutine(void* param) {
+    PRINTF("spin routine\n");
     for(;;);
     return NULL;
 }
 
-void *BruteForceSearchRoutine(void * argument) {
-    routine_arg_t* arg = (routine_arg_t*)(argument);
+void InitRoutineArgs(routine_t* routines, int threads_num) {
+    assert(routines);
+    double distance = (R-L)/threads_num;
+    routines[0].arg.left_border = L;
+    routines[threads_num-1].arg.right_border = R;
 
-    /*auto& first = arg.range.first;
-    auto& last = arg.range.last;
-    auto& answ = arg.min_distance;*/
-
-    //answ = std::numeric_limits<long>::max();
-
-    arg -> min_distance = LONG_MAX;
-
-    //printf("left: %d, right: %d\n, dots number: %d\n", arg->first, arg->last, arg->dots_num);
-
-    for (int i = arg -> first; i < arg -> last; ++i) {
-        //printf("managing dot: %d\n", i);
-        for (int j = 0; j < arg -> dots_num; ++j) {
-            if (i != j)
-                arg -> min_distance = min(arg -> min_distance,
-                        distance_sqr(arg -> all_dots[i], arg -> all_dots[j]));
-        }
+    for (int i = 0; i < threads_num-1; ++i) {
+        routines[i].arg.right_border = routines[i].arg.left_border + distance;
+        routines[i+1].arg.left_border = routines[i].arg.right_border;
     }
 
-    return argument;
-}
-
-long distance_sqr(dot_t lhs, dot_t rhs) {
-    return sqr((long)(rhs.first - lhs.first))
-           + sqr((long)(rhs.second - lhs.second));
+    #ifdef DEBUG 
+       for (int i = 0; i < threads_num; ++i)
+            printf("thread %d [%lf, %lf]\n", i, routines[i].arg.left_border, routines[i].arg.right_border);
+    #endif 
 }
 
 int get_number(const char* str) {
