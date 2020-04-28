@@ -71,17 +71,6 @@ int main(int argc, char** argv) {
 
     ASSERT_TRUE(pthread_attr_init(&pthread_attr) == 0);
 
-    for (int i = 0; i < threads_num; ++i) {
-        CPU_ZERO(&cpu_set);
-        CPU_SET(i, &cpu_set);
-
-        ASSERT_TRUE(pthread_attr_setaffinity_np(&pthread_attr,
-            sizeof(cpu_set_t), &cpu_set) == 0);
-
-        ASSERT_TRUE(pthread_create(&routines[i].pthread, (i>=cpu_number) ? NULL : &pthread_attr,
-            IntegrateRoutine, (void*)&routines[i].arg) == 0);    
-    }
-
     for (int i = threads_num; i < cpu_number; ++i) {
         CPU_ZERO(&cpu_set);
         CPU_SET(i, &cpu_set);
@@ -92,6 +81,18 @@ int main(int argc, char** argv) {
         ASSERT_TRUE(pthread_create(&routines[i].pthread, &pthread_attr,
             SpinRoutine, NULL) == 0);    
     }
+    
+    for (int i = 0; i < threads_num; ++i) {
+        CPU_ZERO(&cpu_set);
+        CPU_SET(i, &cpu_set);
+
+        ASSERT_TRUE(pthread_attr_setaffinity_np(&pthread_attr,
+            sizeof(cpu_set_t), &cpu_set) == 0);
+
+        ASSERT_TRUE(pthread_create(&routines[i].pthread, (i>=cpu_number-1) ? NULL : &pthread_attr,
+            IntegrateRoutine, (void*)&routines[i].arg) == 0);    
+    }
+
 
     ASSERT_TRUE(pthread_attr_destroy(&pthread_attr) == 0);
 
@@ -135,7 +136,8 @@ void* IntegrateRoutine(void* arg) {
 
 void *SpinRoutine(void* param) {
     PRINTF("spin routine\n");
-    for(;;);
+    register int x;
+    for(;;) {++x;};
     return NULL;
 }
 
