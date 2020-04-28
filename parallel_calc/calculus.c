@@ -84,12 +84,12 @@ int main(int argc, char** argv) {
     
     for (int i = 0; i < threads_num; ++i) {
         CPU_ZERO(&cpu_set);
-        CPU_SET(i, &cpu_set);
+        CPU_SET(i % cpu_number, &cpu_set);
 
         ASSERT_TRUE(pthread_attr_setaffinity_np(&pthread_attr,
             sizeof(cpu_set_t), &cpu_set) == 0);
 
-        ASSERT_TRUE(pthread_create(&routines[i].pthread, (i>=cpu_number-1) ? NULL : &pthread_attr,
+        ASSERT_TRUE(pthread_create(&routines[i].pthread, &pthread_attr,
             IntegrateRoutine, (void*)&routines[i].arg) == 0);    
     }
 

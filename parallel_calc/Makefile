@@ -12,4 +12,4 @@ calculus: calculus.c
 	$(CC) $(CFLAGS) -o $@ calculus.c -lm
 
 clean: 
-	rm debug calculus
+	rm -f debug calculus
