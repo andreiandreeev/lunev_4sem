@@ -44,7 +44,8 @@ typedef struct routine_t {
 void* SpinRoutine(void*);
 void* IntegrateRoutine(void*);
 void InitRoutineArgs(routine_t*, int);
-int get_number(const char*);
+int GetNumber(const char*);
+void DoRoutines(routine_t*, int, int);
 
 int main(int argc, char** argv) {
     if (argc != 2) {
@@ -53,7 +54,7 @@ int main(int argc, char** argv) {
         return EXIT_FAILURE;
     }
 
-    int threads_num = get_number(argv[1]);
+    int threads_num = GetNumber(argv[1]);
     if (threads_num <= 0) {
         fprintf(stderr, "usage: %s <threads number>", argv[0]);
         return EXIT_FAILURE;
@@ -65,7 +66,13 @@ int main(int argc, char** argv) {
     assert(routines);
 
     InitRoutineArgs(routines, threads_num);
+    DoRoutines(routines, cpu_number, threads_num);
+    free(routines);
 
+    return 0;
+}
+
+void DoRoutines(routine_t* routines, int cpu_number, int threads_num) {
     pthread_attr_t pthread_attr;
     cpu_set_t cpu_set;
 
@@ -104,10 +111,6 @@ int main(int argc, char** argv) {
         answ += routines[i].arg.answ;
 
     printf("cos(x) integral at [%d, %d] %lf\n", L, R, answ);
-
-    free(routines);
-
-    return 0;
 }
 
 void* IntegrateRoutine(void* arg) {
@@ -158,7 +161,7 @@ void InitRoutineArgs(routine_t* routines, int threads_num) {
     #endif 
 }
 
-int get_number(const char* str) {
+int GetNumber(const char* str) {
     char* str_end;
     long number = strtol(str, &str_end, 10);
 
