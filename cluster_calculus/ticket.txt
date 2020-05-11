@@ -1,4 +1,0 @@
-ticket for May 6:
-
-read about connection setting in p 694
-write a model of connection
